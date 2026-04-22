@@ -6,7 +6,7 @@ const MONGO_URI =
   "mongodb://REDACTED:REDACTED@REDACTED/REDACTED";
 const DB_NAME = "rifatacademy";
 const JSON_PATH =
-  "C:/Users/Shafin 07/Downloads/wp-nodejs-relational-export-2026-04-19-184519.json";
+  "C:/Users/Shafin 07/Downloads/wp-nodejs-relational-export-2026-04-22-081241.json";
 const BATCH_SIZE = 1000;
 
 function log(msg) {

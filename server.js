@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 const { MongoClient } = require("mongodb");
 
 const app = express();
@@ -15,7 +16,6 @@ const JWT_SECRET = "REDACTED_JWT_SECRET";
 
 let db;
 
-// ── DB Connect ────────────────────────────────────────────────
 async function connectDB() {
   const client = new MongoClient(MONGO_URI);
   await client.connect();
@@ -23,19 +23,25 @@ async function connectDB() {
   console.log("MongoDB connected");
 }
 
-// ── WP password verify ────────────────────────────────────────
-// WordPress stores hash as $wp$2y$... but bcrypt needs $2y$...
 function verifyWPPassword(plainPassword, wpHash) {
   try {
-    // Remove $wp$ prefix
-    const bcryptHash = wpHash.replace("$wp$", "$");
-    return bcrypt.compareSync(plainPassword, bcryptHash);
+    if (wpHash.startsWith("$wp")) {
+      const hmac = crypto.createHmac("sha384", "wp-sha384");
+      hmac.update(plainPassword);
+      const passwordToVerify = hmac.digest("base64");
+      const cleanHash = wpHash.substring(3);
+      return bcrypt.compareSync(passwordToVerify, cleanHash);
+    } else if (wpHash.startsWith("$P$") || wpHash.startsWith("$H$")) {
+      const hasher = require("wordpress-hash-node");
+      return hasher.CheckPassword(plainPassword, wpHash);
+    } else {
+      return bcrypt.compareSync(plainPassword, wpHash);
+    }
   } catch {
     return false;
   }
 }
 
-// ── Auth middleware ───────────────────────────────────────────
 function auth(req, res, next) {
   const token = req.headers.authorization?.split(" ")[1];
   if (!token)
@@ -48,7 +54,6 @@ function auth(req, res, next) {
   }
 }
 
-// ── POST /api/login ───────────────────────────────────────────
 app.post("/api/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -57,9 +62,17 @@ app.post("/api/login", async (req, res) => {
         .status(400)
         .json({ success: false, message: "Email and password required" });
 
-    const user = await db
-      .collection("users")
-      .findOne({ email: email.toLowerCase().trim() });
+    const loginId = email.toLowerCase().trim();
+
+    // email অথবা username যেকোনো একটা দিয়ে login করা যাবে
+    const user = await db.collection("users").findOne({
+      $or: [
+        { email: loginId },
+        { username: loginId },
+        { username: email.trim() }, // case sensitive username এর জন্য
+      ],
+    });
+
     if (!user)
       return res
         .status(401)
@@ -98,7 +111,6 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
-// ── GET /api/student/enrollments ──────────────────────────────
 app.get("/api/student/enrollments", auth, async (req, res) => {
   try {
     const enrollments = await db
@@ -107,7 +119,6 @@ app.get("/api/student/enrollments", auth, async (req, res) => {
       .sort({ enrolled_at: -1 })
       .toArray();
 
-    // Get course details for each enrollment
     const courseIds = enrollments.map((e) => e.course_id).filter(Boolean);
     const courses = await db
       .collection("courses")
@@ -145,7 +156,6 @@ app.get("/api/student/enrollments", auth, async (req, res) => {
   }
 });
 
-// ── GET /api/student/orders ───────────────────────────────────
 app.get("/api/student/orders", auth, async (req, res) => {
   try {
     const orders = await db
@@ -154,7 +164,6 @@ app.get("/api/student/orders", auth, async (req, res) => {
       .sort({ created_at: -1 })
       .toArray();
 
-    // Normalize WooCommerce status
     function normalizeStatus(status) {
       const map = {
         "wc-completed": "completed",
@@ -189,7 +198,6 @@ app.get("/api/student/orders", auth, async (req, res) => {
   }
 });
 
-// ── GET /api/student/profile ──────────────────────────────────
 app.get("/api/student/profile", auth, async (req, res) => {
   try {
     const user = await db
@@ -208,7 +216,6 @@ app.get("/api/student/profile", auth, async (req, res) => {
   }
 });
 
-// ── GET /api/courses ──────────────────────────────────────────
 app.get("/api/courses", async (req, res) => {
   try {
     const courses = await db
@@ -223,7 +230,6 @@ app.get("/api/courses", async (req, res) => {
   }
 });
 
-// ── Start ─────────────────────────────────────────────────────
 const PORT = 5000;
 connectDB()
   .then(() => {
