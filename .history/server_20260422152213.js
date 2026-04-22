@@ -2,7 +2,6 @@ const express = require("express");
 const cors = require("cors");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const crypto = require("crypto");
 const { MongoClient } = require("mongodb");
 
 const app = express();
@@ -25,18 +24,12 @@ async function connectDB() {
 
 function verifyWPPassword(plainPassword, wpHash) {
   try {
-    if (wpHash.startsWith("$wp")) {
-      const hmac = crypto.createHmac("sha384", "wp-sha384");
-      hmac.update(plainPassword);
-      const passwordToVerify = hmac.digest("base64");
-      const cleanHash = wpHash.substring(3);
-      return bcrypt.compareSync(passwordToVerify, cleanHash);
-    } else if (wpHash.startsWith("$P$") || wpHash.startsWith("$H$")) {
-      const hasher = require("wordpress-hash-node");
-      return hasher.CheckPassword(plainPassword, wpHash);
-    } else {
-      return bcrypt.compareSync(plainPassword, wpHash);
-    }
+    const bcryptHash = wpHash
+      .replace("$wp$2y$", "$2b$")
+      .replace("$wp$2a$", "$2b$")
+      .replace("$2y$", "$2b$")
+      .replace("$2a$", "$2b$");
+    return bcrypt.compareSync(plainPassword, bcryptHash);
   } catch {
     return false;
   }
@@ -62,14 +55,10 @@ app.post("/api/login", async (req, res) => {
         .status(400)
         .json({ success: false, message: "Email and password required" });
 
-    const loginId = email.toLowerCase().trim();
-
-    // email অথবা username যেকোনো একটা দিয়ে login করা যাবে
     const user = await db.collection("users").findOne({
       $or: [
-        { email: loginId },
-        { username: loginId },
-        { username: email.trim() }, // case sensitive username এর জন্য
+        { email: email.toLowerCase().trim() },
+        { username: email.toLowerCase().trim() },
       ],
     });
 

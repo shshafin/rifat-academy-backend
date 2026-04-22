@@ -688,12 +688,12 @@
           class="error-msg"
           id="errorMsg"></div>
         <div class="form-group">
-          <label class="form-label">ইমেইল অথবা ইউজারনেম</label>
+          <label class="form-label">ইমেইল</label>
           <input
-            type="text"
+            type="email"
             class="form-input"
             id="emailInput"
-            placeholder="ইমেইল অথবা ইউজারনেম" />
+            placeholder="your@email.com" />
         </div>
         <div class="form-group">
           <label class="form-label">পাসওয়ার্ড</label>
@@ -821,7 +821,7 @@
     </div>
 
     <script>
-      const API = "http://localhost:5000/api";
+      const API = "https://rifat-academy-backend.onrender.com/api";
       let token = localStorage.getItem("token");
       let currentUser = JSON.parse(localStorage.getItem("user") || "null");
 
