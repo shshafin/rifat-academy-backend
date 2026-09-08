@@ -17,7 +17,10 @@ app.use(express.json());
 const MONGO_URI =
   process.env.MONGODB_URI;
 const DB_NAME = "rifatacademy";
-const JWT_SECRET = "REDACTED_JWT_SECRET";
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET is required');
+}
 
 let db;
 
