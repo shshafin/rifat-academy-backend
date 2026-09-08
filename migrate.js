@@ -1,9 +1,14 @@
+require('dotenv').config();
+if (!process.env.MONGODB_URI) {
+  throw new Error('MONGODB_URI is required');
+}
+
 const { MongoClient } = require("mongodb");
 const fs = require("fs");
 const path = require("path");
 
 const MONGO_URI =
-  "mongodb://REDACTED:REDACTED@REDACTED/REDACTED";
+  process.env.MONGODB_URI;
 const DB_NAME = "rifatacademy";
 const JSON_PATH =
   "C:/Users/Shafin 07/Downloads/wp-nodejs-relational-export-2026-04-22-081241.json";

@@ -1,3 +1,8 @@
+require('dotenv').config();
+if (!process.env.MONGODB_URI) {
+  throw new Error('MONGODB_URI is required');
+}
+
 const express = require("express");
 const cors = require("cors");
 const bcrypt = require("bcryptjs");
@@ -10,7 +15,7 @@ app.use(cors());
 app.use(express.json());
 
 const MONGO_URI =
-  "mongodb://REDACTED:REDACTED@REDACTED/REDACTED";
+  process.env.MONGODB_URI;
 const DB_NAME = "rifatacademy";
 const JWT_SECRET = "REDACTED_JWT_SECRET";
 
